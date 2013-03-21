@@ -143,7 +143,7 @@ Ext.define('Ext.ux.Cover',{
         var me = this,
             curr = me.getOffset(),
             ln = me.getViewItems().length,
-            selectedIndex = me.getSelectedIndex();
+            selectedIndex = me.getSelectedIndex(),
             delta = e.previousDeltaX,
             offset;
 
@@ -164,6 +164,8 @@ Ext.define('Ext.ux.Cover',{
 
         me.getTargetEl().dom.style.webkitTransitionDuration = "0.4s";
         me.applySelectedIndex(idx);
+        if(idx == me.getStore().getCount()-1)
+            this.loadNextPage();
     },
     
     doItemTap: function(cover, index, item, evt){
@@ -206,12 +208,14 @@ Ext.define('Ext.ux.Cover',{
     setOffset: function(offset){
         var me = this,
             items = me.getViewItems(),
-            item;
+            item,
+            idx = 0,
+            l = items.length; 
 
         me.offset = offset;
         me.getTargetEl().dom.style.webkitTransform = "translate3d(" + offset + "px, 0, 0)";
 
-        for(var idx = 0, l = items.length; idx < l; idx++){
+        for(; idx < l ; idx++){
             item = Ext.get(items[idx]);
             me.setItemTransformation(item, idx, offset);
         }
@@ -224,14 +228,14 @@ Ext.define('Ext.ux.Cover',{
     getBaseItemBox: function(containerBox){
         var cH = containerBox.height,
             cW = containerBox.width,
-            sizeFactor = (cW > cH) ? 0.68 : 0.52,
+            sizeFactor = (cW > cH) ? 0.85 : 0.52,
             h, w;
 
         h = w = Math.min(containerBox.width, containerBox.height) * sizeFactor; 
 
         return {
             top: 40,
-            height: h * 1.5, 
+            height: h*0.80,
             width: w,
             left: (containerBox.width - w) / 2 
         };
@@ -264,9 +268,9 @@ Ext.define('Ext.ux.Cover',{
             transf = "translate3d("+x+"px, 0, 150px)"
             me.selectedIndex = idx;
         }else if(ix > 0){
-            transf = "translate3d("+(x+me.delta)+"px, 0, 0) rotateY(-"+me.getAngle()+"deg)"
+            transf = "translate3d("+(x + me.delta)+"px, 0, 0) rotateY(-"+me.getAngle()+"deg)"
         }else{
-            transf = "translate3d("+(x-me.delta)+"px, 0, 0) rotateY("+me.getAngle()+"deg)"
+            transf = "translate3d("+(x - me.delta)+"px, 0, 0) rotateY("+me.getAngle()+"deg)"
         }   
         item.dom.style.webkitTransform = transf;
     },
@@ -292,7 +296,7 @@ Ext.define('Ext.ux.Cover',{
     doRefresh: function(me){
         var container = me.container,
             orientation = Ext.Viewport.getOrientation(),
-            items,l;
+            items,l, idx = 0;
             
         
         me.setOrientation(orientation);    
@@ -303,7 +307,7 @@ Ext.define('Ext.ux.Cover',{
         me.itemBox = me.getBaseItemBox(me.element.getBox());
         me.setBoundaries(me.itemBox);
         
-        for(var idx = 0, l = items.length; idx < l; idx++){
+        for(l = items.length; idx < l; idx++){
             me.resizeItem(items[idx]);
         }
 
@@ -319,13 +323,12 @@ Ext.define('Ext.ux.Cover',{
             itemBox has an extra long in height to avoid reflection opacity over other items
             I need to create a wrapper element with same bg to avoid that issue.
         */
-        item.down('.'+this.getItemBaseCls()).setBox({height: itemBox.height/1.5, width: itemBox.width});
+        item.down('.'+this.getItemBaseCls()).setBox({height: itemBox.height/1.2, width: itemBox.width});
     },
     
     //override
     onStoreUpdate: function(store, record, newIndex, oldIndex) {
-        var me = this,
-            container = me.container,
+        var container = this.container,
             item;
 
         oldIndex = (typeof oldIndex === 'undefined') ? newIndex : oldIndex;
@@ -338,9 +341,29 @@ Ext.define('Ext.ux.Cover',{
             item = container.getViewItems()[newIndex];
             // Bypassing setter because sometimes we pass the same record (different data)
             container.updateListItem(record, item);
-            me.resizeItem(item);
-
+            this.resizeItem(item);
         }
+    },
+    /**
+     * @private
+     */
+    loadNextPage: function() {
+        if (!this.storeFullyLoaded()) {
+            this.getStore().nextPage({ addRecords: true });
+        }
+    },
+
+    /**
+     * @private
+     * Returns true if the Store is detected as being fully loaded, or the server did not return a total count, which
+     * means we're in 'infinite' mode
+     * @return {Boolean}
+     */
+    storeFullyLoaded: function() {
+        var store = this.getStore(),
+            total = store.getTotalCount();
+
+        return total !== null ? store.getTotalCount() <= (store.currentPage * store.getPageSize()) : false;
     }
 });
 
