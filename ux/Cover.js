@@ -54,7 +54,7 @@ Ext.define('Ext.ux.Cover',{
         //private
         itemBaseCls: 'ux-cover-item-inner',
         //private
-        scrollable: false,
+        scrollable: null,
         //private
         orientation: undefined
     },
